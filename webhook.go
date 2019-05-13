@@ -74,9 +74,6 @@ func handlePodPatch(pod *corev1.Pod) ([]byte, error) {
 func (whsvr *WebhookServer) mutate(ar *v1beta1.AdmissionReview) *v1beta1.AdmissionResponse {
 	req := ar.Request
 
-	glog.Infof("AdmissionReview for Kind=%v, Namespace=%v Name=%v (%v) UID=%v patchOperation=%v UserInfo=%v",
-		req.Kind, req.Namespace, req.Name, resourceName, req.UID, req.Operation, req.UserInfo)
-
 	switch req.Kind.Kind {
 	case "Pod":
 		var pod corev1.Pod
@@ -87,21 +84,24 @@ func (whsvr *WebhookServer) mutate(ar *v1beta1.AdmissionReview) *v1beta1.Admissi
 					Message: err.Error(),
 				},
 			}
-		} else {
-			patchBytes, err := handlePodPatch(&pod)
-			if err != nil {
-				return &v1beta1.AdmissionResponse{
-					Result: &metav1.Status{
-						Message: err.Error(),
-					},
-				}
-			} else {
-				reviewResponse := v1beta1.AdmissionResponse{}
-				reviewResponse.Allowed = true
-				reviewResponse.Patch = patchBytes
-				pt := v1beta1.PatchTypeJSONPatch
-				reviewResponse.PatchType = &pt
+		}
+
+		glog.Infof("AdmissionReview for Kind=%v, Namespace=%v Name=%v (%v) UID=%v patchOperation=%v UserInfo=%v",
+			req.Kind, req.Namespace, req.Name, pod.Name, req.UID, req.Operation, req.UserInfo)
+
+		patchBytes, err := handlePodPatch(&pod)
+		if err != nil {
+			return &v1beta1.AdmissionResponse{
+				Result: &metav1.Status{
+					Message: err.Error(),
+				},
 			}
+		} else {
+			reviewResponse := v1beta1.AdmissionResponse{}
+			reviewResponse.Allowed = true
+			reviewResponse.Patch = patchBytes
+			pt := v1beta1.PatchTypeJSONPatch
+			reviewResponse.PatchType = &pt
 		}
 
 	}
