@@ -1,14 +1,14 @@
 apiVersion: admissionregistration.k8s.io/v1beta1
 kind: MutatingWebhookConfiguration
 metadata:
-  name: sidecar-injector-webhook-cfg
+  name: lcow-injector-cfg
   labels:
-    app: sidecar-injector
+    app: lcow-injector
 webhooks:
-  - name: sidecar-injector.morven.me
+  - name: lcow-injector.sachinmsft
     clientConfig:
       service:
-        name: sidecar-injector-webhook-svc
+        name: lcow-injector-webhook-svc
         namespace: default
         path: "/mutate"
       caBundle: ${CA_BUNDLE}
@@ -17,6 +17,3 @@ webhooks:
         apiGroups: [""]
         apiVersions: ["v1"]
         resources: ["pods"]
-    namespaceSelector:
-      matchLabels:
-        sidecar-injector: enabled

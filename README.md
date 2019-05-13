@@ -1,6 +1,4 @@
-# Kubernetes Mutating Admission Webhook for sidecar injection
-
-This tutoral shows how to build and deploy a [MutatingAdmissionWebhook](https://kubernetes.io/docs/admin/admission-controllers/#mutatingadmissionwebhook-beta-in-19) that injects a nginx sidecar container into pod prior to persistence of the object.
+# Kubernetes Mutating Admission Webhook for lcow injection
 
 ## Prerequisites
 
@@ -32,11 +30,11 @@ go get -u github.com/golang/dep/cmd/dep
 
 ## Deploy
 
-1. Create a signed cert/key pair and store it in a Kubernetes `secret` that will be consumed by sidecar deployment
+1. Create a signed cert/key pair and store it in a Kubernetes `secret` that will be consumed lcow deployment
 ```
 ./deployment/webhook-create-signed-cert.sh \
-    --service sidecar-injector-webhook-svc \
-    --secret sidecar-injector-webhook-certs \
+    --service lcow-injector-webhook-svc \
+    --secret lcow-injector-webhook-certs \
     --namespace default
 ```
 
@@ -49,8 +47,6 @@ cat deployment/mutatingwebhook.yaml | \
 
 3. Deploy resources
 ```
-kubectl create -f deployment/nginxconfigmap.yaml
-kubectl create -f deployment/configmap.yaml
 kubectl create -f deployment/deployment.yaml
 kubectl create -f deployment/service.yaml
 kubectl create -f deployment/mutatingwebhook-ca-bundle.yaml
@@ -58,53 +54,12 @@ kubectl create -f deployment/mutatingwebhook-ca-bundle.yaml
 
 ## Verify
 
-1. The sidecar inject webhook should be running
+1. The lcow inject webhook should be running
 ```
 [root@mstnode ~]# kubectl get pods
 NAME                                                  READY     STATUS    RESTARTS   AGE
-sidecar-injector-webhook-deployment-bbb689d69-882dd   1/1       Running   0          5m
+lcow-injector-webhook-deployment-bbb689d69-882dd   1/1       Running   0          5m
 [root@mstnode ~]# kubectl get deployment
 NAME                                  DESIRED   CURRENT   UP-TO-DATE   AVAILABLE   AGE
-sidecar-injector-webhook-deployment   1         1         1            1           5m
-```
-
-2. Label the default namespace with `sidecar-injector=enabled`
-```
-kubectl label namespace default sidecar-injector=enabled
-[root@mstnode ~]# kubectl get namespace -L sidecar-injector
-NAME          STATUS    AGE       SIDECAR-INJECTOR
-default       Active    18h       enabled
-kube-public   Active    18h
-kube-system   Active    18h
-```
-
-3. Deploy an app in Kubernetes cluster, take `sleep` app as an example
-```
-[root@mstnode ~]# cat <<EOF | kubectl create -f -
-apiVersion: extensions/v1beta1
-kind: Deployment
-metadata:
-  name: sleep
-spec:
-  replicas: 1
-  template:
-    metadata:
-      annotations:
-        sidecar-injector-webhook.morven.me/inject: "yes"
-      labels:
-        app: sleep
-    spec:
-      containers:
-      - name: sleep
-        image: tutum/curl
-        command: ["/bin/sleep","infinity"]
-        imagePullPolicy: 
-EOF
-```
-
-4. Verify sidecar container injected
-```
-[root@mstnode ~]# kubectl get pods
-NAME                     READY     STATUS        RESTARTS   AGE
-sleep-5c55f85f5c-tn2cs   2/2       Running       0          1m
+lcow-injector-webhook-deployment   1         1         1            1           5m
 ```
