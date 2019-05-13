@@ -57,22 +57,17 @@ const (
 
 func handlePodPatch(pod *corev1.Pod) ([]byte, error) {
 
-	var patch []patchOperation
+	var patch string
 	// check if node selector is set to linux
 	if pod.Spec.NodeSelector["beta.kubernetes.io/os"] == "linux" {
 		// remove the linux node selector and add windows so that pod should schedule on windows node
 		//TODO : remove linux and add windows node selector
 
-		
-		patch = append(patch, patchOperation {
-			Op: "add",
-			Path: "/spec/metadata/Labels",
-			Value: [{"sandbox-platform":"linux-amd64"}],
-		})
+		patch = lcowRuntimeClassPatch
 	} else {
 
 	}
-	return json.Marshal(patch)
+	return []byte(patch), nil
 }
 
 // main mutation process
@@ -94,7 +89,19 @@ func (whsvr *WebhookServer) mutate(ar *v1beta1.AdmissionReview) *v1beta1.Admissi
 			}
 		} else {
 			patchBytes, err := handlePodPatch(&pod)
-
+			if err != nil {
+				return &v1beta1.AdmissionResponse{
+					Result: &metav1.Status{
+						Message: err.Error(),
+					},
+				}
+			} else {
+				reviewResponse := v1beta1.AdmissionResponse{}
+				reviewResponse.Allowed = true
+				reviewResponse.Patch = patchBytes
+				pt := v1beta1.PatchTypeJSONPatch
+				reviewResponse.PatchType = &pt
+			}
 		}
 
 	}
