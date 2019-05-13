@@ -31,21 +31,73 @@ type WhSvrParameters struct {
 	keyFile  string // path to the x509 private key matching `CertFile`
 }
 
+type patchOperation struct {
+	Op    string      `json:"op"`
+	Path  string      `json:"path"`
+	Value interface{} `json:"value,omitempty"`
+}
+
+const (
+	lcowRuntimeClassPatch string = `[
+		 {"op":"add","path":"/spec/RuntimeClassName","value":"lcow"}
+	]`
+
+	wcowRuntimeClassPatch string = `[
+		 {"op":"add","path":"/spec/RuntimeClassName","value":"wcow"}
+	]`
+
+	lcowSandboxPlatformPatch string = `[
+		{"op":"add","path":"/spec/metadata/Labels","value":[{"sandbox-platform":"linux-amd64"}]}
+	]`
+
+	wcowSandboxPlatformPatch string = `[
+		 {"op":"add","path":"/spec/metadata/Labels","value":[{"sandbox-platform":"windows-amd64"}]}
+	]`
+)
+
+func handlePodPatch(pod *corev1.Pod) ([]byte, error) {
+
+	var patch []patchOperation
+	// check if node selector is set to linux
+	if pod.Spec.NodeSelector["beta.kubernetes.io/os"] == "linux" {
+		// remove the linux node selector and add windows so that pod should schedule on windows node
+		//TODO : remove linux and add windows node selector
+
+		
+		patch = append(patch, patchOperation {
+			Op: "add",
+			Path: "/spec/metadata/Labels",
+			Value: [{"sandbox-platform":"linux-amd64"}],
+		})
+	} else {
+
+	}
+	return json.Marshal(patch)
+}
+
 // main mutation process
 func (whsvr *WebhookServer) mutate(ar *v1beta1.AdmissionReview) *v1beta1.AdmissionResponse {
 	req := ar.Request
-	var pod corev1.Pod
-	if err := json.Unmarshal(req.Object.Raw, &pod); err != nil {
-		glog.Errorf("Could not unmarshal raw object: %v", err)
-		return &v1beta1.AdmissionResponse{
-			Result: &metav1.Status{
-				Message: err.Error(),
-			},
-		}
-	}
 
 	glog.Infof("AdmissionReview for Kind=%v, Namespace=%v Name=%v (%v) UID=%v patchOperation=%v UserInfo=%v",
-		req.Kind, req.Namespace, req.Name, pod.Name, req.UID, req.Operation, req.UserInfo)
+		req.Kind, req.Namespace, req.Name, resourceName, req.UID, req.Operation, req.UserInfo)
+
+	switch req.Kind.Kind {
+	case "Pod":
+		var pod corev1.Pod
+		if err := json.Unmarshal(req.Object.Raw, &pod); err != nil {
+			glog.Errorf("Could not unmarshal raw object: %v", err)
+			return &v1beta1.AdmissionResponse{
+				Result: &metav1.Status{
+					Message: err.Error(),
+				},
+			}
+		} else {
+			patchBytes, err := handlePodPatch(&pod)
+
+		}
+
+	}
 
 	return &v1beta1.AdmissionResponse{
 		Result: &metav1.Status{
