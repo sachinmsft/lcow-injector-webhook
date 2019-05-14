@@ -51,7 +51,7 @@ const (
 	]`
 
 	wcowSandboxPlatformPatch string = `[
-		 {"op":"add","path":"/metadata/labels","value":[{"sandbox-platform": "windows-amd64"}]}
+		 {"op":"add","path":"/metadata/labels","value":{"sandbox-platform": "windows-amd64"}}
 	]`
 )
 
@@ -64,7 +64,7 @@ func handlePodPatch(pod *corev1.Pod) ([]byte, error) {
 		// remove the linux node selector and add windows so that pod should schedule on windows node
 		//TODO : remove linux and add windows node selector
 
-		patch = lcowSandboxPlatformPatch
+		patch = wcowSandboxPlatformPatch
 	} else {
 
 	}
