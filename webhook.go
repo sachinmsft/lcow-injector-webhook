@@ -39,19 +39,19 @@ type patchOperation struct {
 
 const (
 	lcowRuntimeClassPatch string = `[
-		 {"op":"add","path":"/spec/RuntimeClassName","value":"lcow"}
+		 {"op":"add","path":"/spec/runtimeClassName","value":"lcow"}
 	]`
 
 	wcowRuntimeClassPatch string = `[
-		 {"op":"add","path":"/spec/RuntimeClassName","value":"wcow"}
+		 {"op":"add","path":"/spec/runtimeClassName","value":"wcow"}
 	]`
 
 	lcowSandboxPlatformPatch string = `[
-		{"op":"add","path":"/metadata/Labels","value":[{"sandbox-platform":"linux-amd64"}]}
+		{"op":"add","path":"/metadata/labels","value":[{"sandbox-platform":"linux-amd64"}]}
 	]`
 
 	wcowSandboxPlatformPatch string = `[
-		 {"op":"add","path":"/metadata/Labels","value":[{"sandbox-platform":"windows-amd64"}]}
+		 {"op":"add","path":"/metadata/labels","value":[{"sandbox-platform":"windows-amd64"}]}
 	]`
 )
 
