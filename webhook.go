@@ -47,28 +47,32 @@ const (
 	]`
 
 	lcowSandboxPlatformPatch string = `[		
-         {"op":"add","path":"/spec/initContainers","value":[{"image":"webhook-added-image","name":"webhook-added-init-container","resources":{}}]}
+		{"op":"add","path":"/metadata/labels","value":{"sandbox-platform": "linux-amd64"}}
 	]`
 
 	wcowSandboxPlatformPatch string = `[
 		 {"op":"add","path":"/metadata/labels","value":{"sandbox-platform": "windows-amd64"}}
 	]`
+
+	replaceSelectorPatch string = `[
+		 {"op":"replace","path":"/spec/nodeSelector/beta.kubernetes.io/os","value": "windows"}
+	]`
 )
 
 func handlePodPatch(pod *corev1.Pod) ([]byte, error) {
 
-	var patch string
+	var patch []string
 	// check if node selector is set to linux
 	if pod.Spec.NodeSelector["beta.kubernetes.io/os"] == "linux" {
 		glog.Infof("Node selector is linux")
 		// remove the linux node selector and add windows so that pod should schedule on windows node
-		//TODO : remove linux and add windows node selector
+		patch = append(patch, replaceSelectorPatch)
+		patch = append(patch, lcowSandboxPlatformPatch)
 
-		patch = wcowSandboxPlatformPatch
 	} else {
 
 	}
-	return []byte(patch), nil
+	return json.Marshal(patch)
 }
 
 // main mutation process
