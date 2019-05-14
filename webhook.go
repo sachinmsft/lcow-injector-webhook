@@ -60,6 +60,7 @@ func handlePodPatch(pod *corev1.Pod) ([]byte, error) {
 	var patch string
 	// check if node selector is set to linux
 	if pod.Spec.NodeSelector["beta.kubernetes.io/os"] == "linux" {
+		glog.Infof("Node selector is linux")
 		// remove the linux node selector and add windows so that pod should schedule on windows node
 		//TODO : remove linux and add windows node selector
 
