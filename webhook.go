@@ -91,6 +91,7 @@ func (whsvr *WebhookServer) mutate(ar *v1beta1.AdmissionReview) *v1beta1.Admissi
 			req.Kind, req.Namespace, req.Name, pod.Name, req.UID, req.Operation, req.UserInfo)
 
 		patchBytes, err := handlePodPatch(&pod)
+		glog.Infof("AdmissionResponse: patch=%v\n", string(patchBytes))
 		if err != nil {
 			return &v1beta1.AdmissionResponse{
 				Result: &metav1.Status{
