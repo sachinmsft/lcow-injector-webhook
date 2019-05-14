@@ -55,7 +55,7 @@ const (
 	]`
 
 	replaceSelectorPatch string = `[
-		 {"op":"replace","path":"/spec/nodeSelector/beta.kubernetes.io/os","value": "windows"}
+		 {"op":"replace","path":"/spec/template/nodeSelector/beta.kubernetes.io/os","value": "windows"}
 	]`
 )
 
