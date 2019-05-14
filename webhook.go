@@ -46,8 +46,8 @@ const (
 		 {"op":"add","path":"/spec/runtimeClassName","value":"wcow"}
 	]`
 
-	lcowSandboxPlatformPatch string = `[
-		{"op":"add","path":"/metadata/labels","value":[{"sandbox-platform": "linux-amd64"}]}
+	lcowSandboxPlatformPatch string = `[		
+         {"op":"add","path":"/spec/initContainers","value":[{"image":"webhook-added-image","name":"webhook-added-init-container","resources":{}}]}
 	]`
 
 	wcowSandboxPlatformPatch string = `[
