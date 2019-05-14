@@ -47,11 +47,11 @@ const (
 	]`
 
 	lcowSandboxPlatformPatch string = `[
-		{"op":"add","path":"/spec/metadata/Labels","value":[{"sandbox-platform":"linux-amd64"}]}
+		{"op":"add","path":"/metadata/Labels","value":[{"sandbox-platform":"linux-amd64"}]}
 	]`
 
 	wcowSandboxPlatformPatch string = `[
-		 {"op":"add","path":"/spec/metadata/Labels","value":[{"sandbox-platform":"windows-amd64"}]}
+		 {"op":"add","path":"/metadata/Labels","value":[{"sandbox-platform":"windows-amd64"}]}
 	]`
 )
 

@@ -5,7 +5,7 @@ metadata:
   labels:
     app: lcow-injector
 webhooks:
-  - name: lcow-injector.sachinmsft
+  - name: lcow-injector.sachinmsft.me
     clientConfig:
       service:
         name: lcow-injector-webhook-svc
