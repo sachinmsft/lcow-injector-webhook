@@ -102,6 +102,8 @@ func (whsvr *WebhookServer) mutate(ar *v1beta1.AdmissionReview) *v1beta1.Admissi
 			reviewResponse.Patch = patchBytes
 			pt := v1beta1.PatchTypeJSONPatch
 			reviewResponse.PatchType = &pt
+
+			return &reviewResponse
 		}
 
 	}
