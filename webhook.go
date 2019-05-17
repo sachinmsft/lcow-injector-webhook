@@ -8,6 +8,7 @@ import (
 
 	"github.com/golang/glog"
 	"k8s.io/api/admission/v1beta1"
+	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -55,63 +56,184 @@ const (
 	]`
 
 	replaceSelectorPatch string = `[
-		 {"op":"replace","path":"/spec/template/nodeSelector/beta.kubernetes.io/os","value": "windows"}
+		 {"op":"replace","path":"/spec/nodeSelector/beta.kubernetes.io~1os","value": "windows"}
 	]`
 )
 
-func handlePodPatch(pod *corev1.Pod) ([]byte, error) {
+func handlePatch(object interface{}) ([]byte, error) {
+	switch object.(type) {
+	case *corev1.Pod:
+		var pod *corev1.Pod
+		pod = object.(*corev1.Pod)
+		osNodeSelector, ok := pod.Spec.NodeSelector["beta.kubernetes.io/os"]
+		if ok == false {
+			glog.Infof("OS node selector is not present")
+			return []byte(`[{"op":"add","path":"/spec/nodeSelector","value":{"beta.kubernetes.io/os": "windows"}},{"op":"add","path":"/metadata/labels","value":{"sandbox-platform": "linux-amd64"}},{"op":"add","path":"/spec/runtimeClassName","value":"lcow"}]`), nil
+		}
 
-	var patch string
-	// check if node selector is set to linux
-	if pod.Spec.NodeSelector["beta.kubernetes.io/os"] == "linux" {
-		glog.Infof("Node selector is linux")
-		// remove the linux node selector and add windows so that pod should schedule on windows node
-		patch = replaceSelectorPatch
-		//	patch = append(patch, lcowSandboxPlatformPatch)
+		glog.Infof("OS node selector is %v", osNodeSelector)
+		// check if node selector is set to linux
+		if osNodeSelector == "windows" {
+			return []byte(`[{"op":"add","path":"/metadata/labels","value":{"sandbox-platform": "windows-amd64"}},{"op":"add","path":"/spec/runtimeClassName","value":"wcow"}]`), nil
+		}
 
-	} else {
-
+		// linux
+		return []byte(`[{"op":"replace","path":"/spec/nodeSelector/beta.kubernetes.io~1os","value": "windows"},{"op":"add","path":"/metadata/labels","value":{"sandbox-platform": "linux-amd64"}},{"op":"add","path":"/spec/runtimeClassName","value":"lcow"}]`), nil
 	}
-	return []byte(patch), nil
+	return []byte(`[]`), nil
 }
 
-// main mutation process
-func (whsvr *WebhookServer) mutate(ar *v1beta1.AdmissionReview) *v1beta1.AdmissionResponse {
-	req := ar.Request
+func unmarshalObject(req *v1beta1.AdmissionRequest) (interface{}, error) {
+
+	var object interface{}
 
 	switch req.Kind.Kind {
 	case "Pod":
 		var pod corev1.Pod
 		if err := json.Unmarshal(req.Object.Raw, &pod); err != nil {
 			glog.Errorf("Could not unmarshal raw object: %v", err)
-			return &v1beta1.AdmissionResponse{
-				Result: &metav1.Status{
-					Message: err.Error(),
-				},
-			}
+			return object, err
 		}
+		object = &pod
+		glog.Infof("AdmissionReview for Kind=%v, Namespace=%v Name=%v (%v) UID=%v patchOperation=%v UserInfo=%v", req.Kind, req.Namespace, req.Name, pod.Name, req.UID, req.Operation, req.UserInfo)
 
-		glog.Infof("AdmissionReview for Kind=%v, Namespace=%v Name=%v (%v) UID=%v patchOperation=%v UserInfo=%v",
-			req.Kind, req.Namespace, req.Name, pod.Name, req.UID, req.Operation, req.UserInfo)
+	case "Deployment":
+		var deployment appsv1.Deployment
+		if err := json.Unmarshal(req.Object.Raw, &deployment); err != nil {
+			glog.Errorf("Could not unmarshal raw object: %v", err)
+			return object, err
+		}
+		object = &deployment
+		glog.Infof("AdmissionReview for Kind=%v, Namespace=%v Name=%v (%v) UID=%v patchOperation=%v UserInfo=%v", req.Kind, req.Namespace, req.Name, deployment.Name, req.UID, req.Operation, req.UserInfo)
 
-		patchBytes, err := handlePodPatch(&pod)
-		glog.Infof("AdmissionResponse: patch=%v\n", string(patchBytes))
-		if err != nil {
-			return &v1beta1.AdmissionResponse{
-				Result: &metav1.Status{
-					Message: err.Error(),
-				},
-			}
-		} else {
+	case "ReplicaSet":
+		var replicaSet appsv1.ReplicaSet
+		if err := json.Unmarshal(req.Object.Raw, &replicaSet); err != nil {
+			glog.Errorf("Could not unmarshal raw object: %v", err)
+			return object, err
+		}
+		object = &replicaSet
+		glog.Infof("AdmissionReview for Kind=%v, Namespace=%v Name=%v (%v) UID=%v patchOperation=%v UserInfo=%v", req.Kind, req.Namespace, req.Name, replicaSet.Name, req.UID, req.Operation, req.UserInfo)
+
+	case "StatefulSet":
+		var stateFulSet appsv1.StatefulSet
+		if err := json.Unmarshal(req.Object.Raw, &stateFulSet); err != nil {
+			glog.Errorf("Could not unmarshal raw object: %v", err)
+			return object, err
+		}
+		object = &stateFulSet
+		glog.Infof("AdmissionReview for Kind=%v, Namespace=%v Name=%v (%v) UID=%v patchOperation=%v UserInfo=%v", req.Kind, req.Namespace, req.Name, stateFulSet.Name, req.UID, req.Operation, req.UserInfo)
+	}
+
+	return object, nil
+}
+
+// main mutation process
+func (whsvr *WebhookServer) mutate(ar *v1beta1.AdmissionReview) *v1beta1.AdmissionResponse {
+	req := ar.Request
+
+	if object, err := unmarshalObject(req); err == nil {
+		switch object.(type) {
+		default:
+			// TODO : test this negative case
+			// If User has configured the webhook for not implemented object then don't apply any patch
 			reviewResponse := v1beta1.AdmissionResponse{}
 			reviewResponse.Allowed = true
-			reviewResponse.Patch = patchBytes
+			reviewResponse.Patch = []byte(`[]`)
 			pt := v1beta1.PatchTypeJSONPatch
 			reviewResponse.PatchType = &pt
 
 			return &reviewResponse
-		}
 
+		case *corev1.Pod:
+			var pod *corev1.Pod
+			pod = object.(*corev1.Pod)
+			patchBytes, err := handlePatch(pod)
+			glog.Infof("AdmissionResponse: patch=%v\n", string(patchBytes))
+			if err != nil {
+				return &v1beta1.AdmissionResponse{
+					Result: &metav1.Status{
+						Message: err.Error(),
+					},
+				}
+			} else {
+				reviewResponse := v1beta1.AdmissionResponse{}
+				reviewResponse.Allowed = true
+				reviewResponse.Patch = patchBytes
+				pt := v1beta1.PatchTypeJSONPatch
+				reviewResponse.PatchType = &pt
+
+				return &reviewResponse
+			}
+		case *appsv1.Deployment:
+			var deployment *appsv1.Deployment
+			deployment = object.(*appsv1.Deployment)
+			patchBytes, err := handlePatch(deployment)
+			glog.Infof("AdmissionResponse: patch=%v\n", string(patchBytes))
+			if err != nil {
+				return &v1beta1.AdmissionResponse{
+					Result: &metav1.Status{
+						Message: err.Error(),
+					},
+				}
+			} else {
+				reviewResponse := v1beta1.AdmissionResponse{}
+				reviewResponse.Allowed = true
+				reviewResponse.Patch = patchBytes
+				pt := v1beta1.PatchTypeJSONPatch
+				reviewResponse.PatchType = &pt
+
+				return &reviewResponse
+			}
+
+		case *appsv1.ReplicaSet:
+			var replicaSet *appsv1.ReplicaSet
+			replicaSet = object.(*appsv1.ReplicaSet)
+			patchBytes, err := handlePatch(replicaSet)
+			glog.Infof("AdmissionResponse: patch=%v\n", string(patchBytes))
+			if err != nil {
+				return &v1beta1.AdmissionResponse{
+					Result: &metav1.Status{
+						Message: err.Error(),
+					},
+				}
+			} else {
+				reviewResponse := v1beta1.AdmissionResponse{}
+				reviewResponse.Allowed = true
+				reviewResponse.Patch = patchBytes
+				pt := v1beta1.PatchTypeJSONPatch
+				reviewResponse.PatchType = &pt
+
+				return &reviewResponse
+			}
+
+		case *appsv1.StatefulSet:
+			var stateFulSet *appsv1.StatefulSet
+			stateFulSet = object.(*appsv1.StatefulSet)
+			patchBytes, err := handlePatch(stateFulSet)
+			glog.Infof("AdmissionResponse: patch=%v\n", string(patchBytes))
+			if err != nil {
+				return &v1beta1.AdmissionResponse{
+					Result: &metav1.Status{
+						Message: err.Error(),
+					},
+				}
+			} else {
+				reviewResponse := v1beta1.AdmissionResponse{}
+				reviewResponse.Allowed = true
+				reviewResponse.Patch = patchBytes
+				pt := v1beta1.PatchTypeJSONPatch
+				reviewResponse.PatchType = &pt
+
+				return &reviewResponse
+			}
+		}
+	} else {
+		return &v1beta1.AdmissionResponse{
+			Result: &metav1.Status{
+				Message: err.Error(),
+			},
+		}
 	}
 
 	return &v1beta1.AdmissionResponse{
@@ -119,7 +241,6 @@ func (whsvr *WebhookServer) mutate(ar *v1beta1.AdmissionReview) *v1beta1.Admissi
 			Message: "tmp",
 		},
 	}
-	// apply logic
 
 }
 
@@ -167,7 +288,6 @@ func (whsvr *WebhookServer) serve(w http.ResponseWriter, r *http.Request) {
 	}
 
 	resp, err := json.Marshal(admissionReview)
-	glog.Infof("admissionReview =%v\n", string(resp))
 
 	if err != nil {
 		glog.Errorf("Can't encode response: %v", err)
