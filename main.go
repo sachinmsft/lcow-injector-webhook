@@ -36,7 +36,8 @@ func main() {
 
 	// define http server and server handler
 	mux := http.NewServeMux()
-	mux.HandleFunc("/mutate", whsvr.serve)
+	mux.HandleFunc("/mutate", whsvr.mutateRequest)
+	mux.HandleFunc("/validate", whsvr.validateRequest)
 	whsvr.server.Handler = mux
 
 	// start webhook server in new rountine

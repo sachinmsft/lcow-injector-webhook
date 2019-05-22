@@ -44,12 +44,19 @@ cat deployment/mutatingwebhook.yaml | \
     deployment/webhook-patch-ca-bundle.sh > \
     deployment/mutatingwebhook-ca-bundle.yaml
 ```
+3. Patch the `ValidatingWebhookConfiguration` by set `caBundle` with correct value from Kubernetes cluster
+```
+cat deployment/validatingwebhook.yaml | \
+    deployment/webhook-patch-ca-bundle.sh > \
+    deployment/validatingwebhook-ca-bundle.yaml
+```
 
-3. Deploy resources
+4. Deploy resources
 ```
 kubectl create -f deployment/deployment.yaml
 kubectl create -f deployment/service.yaml
 kubectl create -f deployment/mutatingwebhook-ca-bundle.yaml
+kubectl create -f deployment/validatingwebhook-ca-bundle.yaml
 ```
 
 ## Verify

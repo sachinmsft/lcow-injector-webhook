@@ -29,3 +29,6 @@ spec:
         - name: webhook-certs
           secret:
             secretName: lcow-injector-webhook-certs
+
+      nodeSelector:
+        beta.kubernetes.io/os: linux
